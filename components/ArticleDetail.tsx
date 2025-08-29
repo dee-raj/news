@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
     ScrollView, Text, Image, StyleSheet,
-    TouchableOpacity, Linking, View
+    TouchableOpacity, Linking, View,
 } from 'react-native';
+import Share from 'react-native-share';
 import Ionicons from '@react-native-vector-icons/ionicons';
+import ViewShot, { captureRef } from 'react-native-view-shot';
 
 import { NewsItem } from '../types/navigation';
 import { useAppContext } from '../context/AppContext';
@@ -21,35 +23,65 @@ const ArticleDetail: React.FC<Props> = ({ item }) => {
         link: '#007AFF',
     };
 
+    const viewShotRef = useRef(null);
+    const handleShare = async () => {
+        try {
+            const uri = await captureRef(viewShotRef, {
+                format: 'png',
+                quality: 0.9,
+            });
+
+            await Share.open({
+                title: 'Check out this article',
+                message: `${item.title}\n\nRead more: ${item.link}\n\nDownload our app for more news!`,
+                url: uri, // screenshot
+                type: 'image/png',
+            });
+        } catch (error) {
+            console.log('Error sharing:', error);
+        }
+    };
+
     return (
-        <ScrollView style={[styles.container, { backgroundColor: colors.background }]} key={item.article_id}>
-            <Image
-                source={{ uri: item.image_url || 'https://bookninja.com/wp-content/uploads/2022/04/image-6.png' }}
-                style={styles.image} />
-            <Text selectable selectionColor={"#7D3"} style={[styles.title, { color: colors.text }]}>{item.title}</Text>
+        <ViewShot style={{ flex: 1 }} ref={viewShotRef} options={{ format: 'png', quality: 0.9 }}>
+            <ScrollView style={[styles.container, { backgroundColor: colors.background }]} key={item.article_id}>
+                <Image
+                    source={{ uri: item.image_url || 'https://bookninja.com/wp-content/uploads/2022/04/image-6.png' }}
+                    style={styles.image} />
+                <Text selectable selectionColor={"#7D3"} style={[styles.title, { color: colors.text }]}>{item.title}</Text>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={[styles.meta, { color: colors.meta }]}>
-                    <Text style={[styles.link, { color: colors.link }]} onPress={() => Linking.openURL(item.source_url)}>
-                        {item.source_name}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={[styles.meta, { color: colors.meta }]}>
+                        <Text style={[styles.link, { color: colors.link }]} onPress={() => Linking.openURL(item.source_url)}>
+                            {item.source_name}
+                        </Text>
+                        {" • "} {new Date(item.pubDate).toLocaleDateString()}
                     </Text>
-                    {" • "} {new Date(item.pubDate).toLocaleDateString()}
-                </Text>
-                <Ionicons
-                    onPress={() => toggleBookmark(item)}
-                    name={isBookmarked ? "bookmark" : "bookmark-outline"}
-                    size={24}
-                    color={colors.link}
-                />
-            </View>
 
-            <Text selectable style={[styles.description, { color: colors.text }]}>{item.description}</Text>
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                        <Ionicons
+                            onPress={() => toggleBookmark(item)}
+                            name={isBookmarked ? "bookmark" : "bookmark-outline"}
+                            size={24}
+                            color={colors.link}
+                        />
+                        <Ionicons
+                            onPress={handleShare}
+                            name="share-social-outline"
+                            size={24}
+                            color={colors.link}
+                        />
+                    </View>
+                </View>
 
-            <TouchableOpacity onPress={() => Linking.openURL(item.link)} style={styles.moreBtn}>
-                <Text style={[styles.link, { color: colors.link }]}>Read Full Article</Text>
-                <Ionicons name='sparkles' color={colors.link} />
-            </TouchableOpacity>
-        </ScrollView>
+                <Text selectable style={[styles.description, { color: colors.text }]}>{item.description}</Text>
+
+                <TouchableOpacity onPress={() => Linking.openURL(item.link)} style={styles.moreBtn}>
+                    <Text style={[styles.link, { color: colors.link }]}>Read Full Article</Text>
+                    <Ionicons name='sparkles' color={colors.link} />
+                </TouchableOpacity>
+            </ScrollView>
+        </ViewShot>
     );
 };
 
@@ -79,7 +111,6 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         gap: 12,
         alignItems: 'center',
-
     },
     link: { fontSize: 16, fontStyle: 'italic' }
 });
